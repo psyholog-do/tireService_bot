@@ -60,6 +60,7 @@ class GoogleSheetsClient:
         name: str,
         phone: str,
         car_type: str,
+        service: str,
         booking_date: date,
         booking_time: str,
         telegram_id: int,
