@@ -10,6 +10,7 @@ from aiogram.types import CallbackQuery
 
 from keyboards.inline import (
     car_type_keyboard,
+    services_keyboard,
     booking_date_keyboard,
     custom_date_keyboard,
     time_slots_keyboard,
