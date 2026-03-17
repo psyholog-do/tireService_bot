@@ -13,6 +13,7 @@ BOOKINGS_HEADER = [
     "Name",
     "Phone",
     "Car Type",
+    "Service",
     "Date",
     "Time",
     "Created At",
