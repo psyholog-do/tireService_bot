@@ -94,6 +94,37 @@ async def process_car_type(callback: CallbackQuery, state: FSMContext):
     _, car_type = callback.data.split(":", 1)
 
     await state.update_data(car_type=car_type)
+
+    # 👇 ПЕРЕХОД К ВЫБОРУ УСЛУГИ
+    await state.set_state(BookingStates.service)
+
+    await callback.message.edit_text(
+        "Выберите услугу",
+        reply_markup=services_keyboard()
+    )
+
+    await callback.answer()
+
+
+# ----------------------------
+# SERVICE (NEW)
+# ----------------------------
+
+@router.callback_query(BookingStates.service, F.data.startswith("service:"))
+async def process_service(callback: CallbackQuery, state: FSMContext):
+
+    _, service_key = callback.data.split(":", 1)
+
+    service_map = {
+        "tire": "Шиномонтаж",
+        "balance": "Балансировка",
+        "full": "Комплекс",
+    }
+
+    service = service_map.get(service_key, "Неизвестно")
+
+    await state.update_data(service=service)
+
     await state.set_state(BookingStates.date)
 
     await callback.message.edit_text(
