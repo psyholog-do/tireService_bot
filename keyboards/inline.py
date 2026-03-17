@@ -43,7 +43,14 @@ def car_type_keyboard() -> InlineKeyboardMarkup:
             ],
         ]
     )
-
+def services_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Шиномонтаж", callback_data="service_tire")],
+        [InlineKeyboardButton(text="Балансировка", callback_data="service_balance")],
+        [InlineKeyboardButton(text="Комплекс", callback_data="service_full")],
+        ]
+    )
 
 def booking_date_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
