@@ -73,6 +73,7 @@ class GoogleSheetsClient:
             name,
             phone,
             car_type,
+            service,
             booking_date.strftime("%Y-%m-%d"),
             booking_time,
             created_at,
