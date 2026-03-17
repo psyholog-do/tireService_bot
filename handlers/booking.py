@@ -6,7 +6,7 @@ import logging
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from keyboards.inline import (
     car_type_keyboard,
@@ -35,10 +35,15 @@ def setup_reminder_service(service: ReminderService) -> None:
     _reminder_service = service
 
 
+# ----------------------------
+# STATES
+# ----------------------------
+
 class BookingStates(StatesGroup):
     name = State()
     phone = State()
     car_type = State()
+    service = State()  # 👈 НОВОЕ СОСТОЯНИЕ
     date = State()
     time = State()
 
@@ -111,7 +116,7 @@ async def process_car_type(callback: CallbackQuery, state: FSMContext):
 # SERVICE (NEW)
 # ----------------------------
 
-@router.callback_query(BookingStates.service, F.data.startswith("service:"))
+@router.callback_query(F.data.startswith("service:"))
 async def process_service(callback: CallbackQuery, state: FSMContext):
 
     _, service_key = callback.data.split(":", 1)
@@ -122,9 +127,7 @@ async def process_service(callback: CallbackQuery, state: FSMContext):
         "full": "Комплекс",
     }
 
-    service = service_map.get(service_key, "Неизвестно")
-
-    await state.update_data(service=service)
+    await state.update_data(service=service_map.get(service_key))
 
     await state.set_state(BookingStates.date)
 
@@ -166,9 +169,7 @@ async def process_date_selection(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(date=selected_date.isoformat())
 
-    # ---- GOOGLE SHEETS ----
     gs = get_sheets_client()
-
     booked_times = gs.get_booked_times_for_date(selected_date)
 
     available_slots = get_available_slots_for_date(
@@ -177,12 +178,10 @@ async def process_date_selection(callback: CallbackQuery, state: FSMContext):
     )
 
     if not available_slots:
-
         await callback.message.edit_text(
             "На выбранную дату свободных слотов нет.\n\nВыберите другую дату.",
             reply_markup=booking_date_keyboard()
         )
-
         await callback.answer()
         return
 
@@ -191,23 +190,6 @@ async def process_date_selection(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         "Выберите время записи",
         reply_markup=time_slots_keyboard(available_slots)
-    )
-
-    await callback.answer()
-
-
-# ----------------------------
-# BACK TO DATE
-# ----------------------------
-
-@router.callback_query(BookingStates.time, F.data == "booking:time_back")
-async def time_back(callback: CallbackQuery, state: FSMContext):
-
-    await state.set_state(BookingStates.date)
-
-    await callback.message.edit_text(
-        "Выберите дату записи",
-        reply_markup=booking_date_keyboard()
     )
 
     await callback.answer()
@@ -233,6 +215,7 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
         f"Имя: {data['name']}\n"
         f"Телефон: {data['phone']}\n"
         f"Тип авто: {data['car_type']}\n"
+        f"Услуга: {data['service']}\n"  # 👈 ДОБАВИЛИ
         f"Дата: {human_date}\n"
         f"Время: {time_str}"
     )
@@ -240,25 +223,6 @@ async def process_time(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         text,
         reply_markup=confirm_keyboard()
-    )
-
-    await callback.answer()
-
-
-# ----------------------------
-# CANCEL BOOKING
-# ----------------------------
-
-@router.callback_query(BookingStates.time, F.data == "booking:cancel")
-async def booking_cancel(callback: CallbackQuery, state: FSMContext):
-
-    logger.info("Booking cancelled by %s", callback.from_user.id)
-
-    await state.clear()
-
-    await callback.message.edit_text(
-        "Запись отменена.",
-        reply_markup=main_menu_keyboard()
     )
 
     await callback.answer()
@@ -283,33 +247,29 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
 
     gs = get_sheets_client()
 
-    # ---- DOUBLE BOOKING PROTECTION ----
     booked_times = gs.get_booked_times_for_date(booking_date)
 
     if booking_time_str in booked_times:
-
         await callback.message.edit_text(
             "Этот слот уже заняли. Пожалуйста выберите другое время.",
             reply_markup=booking_date_keyboard()
         )
-
         await state.set_state(BookingStates.date)
         await callback.answer()
         return
 
-    # ---- SAVE BOOKING ----
+    # 👇 ДОБАВИЛИ service
     gs.append_booking(
         name=data["name"],
         phone=data["phone"],
         car_type=data["car_type"],
+        service=data["service"],
         booking_date=booking_date,
         booking_time=booking_time_str,
         telegram_id=callback.from_user.id,
     )
 
-    # ---- REMINDER ----
     if _reminder_service:
-
         _reminder_service.schedule_reminder(
             chat_id=callback.message.chat.id,
             booking_datetime=booking_datetime
@@ -319,6 +279,7 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         "Вы успешно записаны!\n\n"
+        f"Услуга: {data['service']}\n"
         f"Дата: {human_date}\n"
         f"Время: {booking_time_str}\n\n"
         "Адрес: Рауиса Гареева 110\n\n"
@@ -326,14 +287,13 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
         reply_markup=main_menu_keyboard()
     )
 
-    # ---- ADMIN NOTIFICATION ----
     if ADMIN_ID:
-
         admin_text = (
             "Новая запись!\n\n"
             f"Имя: {data['name']}\n"
             f"Телефон: {data['phone']}\n"
             f"Тип авто: {data['car_type']}\n"
+            f"Услуга: {data['service']}\n"
             f"Дата: {human_date}\n"
             f"Время: {booking_time_str}"
         )
