@@ -9,8 +9,9 @@ LAST_SLOT = time(hour=18, minute=40)
 SLOT_INTERVAL_MINUTES = 20
 
 
-def generate_daily_slots() -> List[str]:
-    """Generate all slots (HH:MM) between FIRST_SLOT and LAST_SLOT inclusive."""
+def generate_daily_slots(booking_date: date) -> List[str]:
+    """Generate slots for a specific date with filtering for past time."""
+
     slots: List[str] = []
     current_dt = datetime.combine(date.today(), FIRST_SLOT)
     last_dt = datetime.combine(date.today(), LAST_SLOT)
