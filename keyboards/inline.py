@@ -121,3 +121,38 @@ def confirm_keyboard() -> InlineKeyboardMarkup:
         ]
     )
 
+def price_categories_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Легковые авто",
+                    callback_data="price:passenger"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Внедорожники / минивэны",
+                    callback_data="price:suv"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Кат. 4 (грязевая резина)",
+                    callback_data="price:offroad"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Доп. услуги",  # 👈 НОВАЯ КНОПКА
+                    callback_data="price:extra"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Назад",
+                    callback_data="back_to_menu"
+                )
+            ],
+        ]
+    )

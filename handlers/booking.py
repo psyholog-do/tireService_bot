@@ -22,6 +22,7 @@ from services.google_sheets import get_sheets_client
 from services.slot_manager import get_available_slots_for_date
 from services.reminder_service import ReminderService
 from utils.config import ADMIN_ID
+from services.cache_service import get_slots_cache
 
 
 router = Router()
@@ -169,8 +170,8 @@ async def process_date_selection(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(date=selected_date.isoformat())
 
-    gs = get_sheets_client()
-    booked_times = gs.get_booked_times_for_date(selected_date)
+    cache = get_slots_cache()
+    booked_times = cache.get_booked_slots(selected_date)
 
     available_slots = get_available_slots_for_date(
         selected_date,
@@ -245,9 +246,8 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
         "%Y-%m-%d %H:%M"
     )
 
-    gs = get_sheets_client()
-
-    booked_times = gs.get_booked_times_for_date(booking_date)
+    cache = get_slots_cache()
+    booked_times = cache.get_booked_slots(selected_date)
 
     if booking_time_str in booked_times:
         await callback.message.edit_text(
@@ -268,7 +268,8 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
         booking_time=booking_time_str,
         telegram_id=callback.from_user.id,
     )
-
+    cache = get_slots_cache()
+    cache.invalidate(booking_date)
     if _reminder_service:
         _reminder_service.schedule_reminder(
             chat_id=callback.message.chat.id,
@@ -283,7 +284,8 @@ async def booking_confirm(callback: CallbackQuery, state: FSMContext):
         f"Дата: {human_date}\n"
         f"Время: {booking_time_str}\n\n"
         "Адрес: Рауиса Гареева 110\n\n"
-        "Ждём вас!",
+        "Ждём вас!"
+        "Вернуться в меню /start",
         reply_markup=main_menu_keyboard()
     )
 
